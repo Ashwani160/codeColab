@@ -17,8 +17,9 @@ function Home() {
     if (!username.trim()) return setError('Enter a username first')
     setLoading(true)
     try {
-      const res = await api.post('/rooms')
-      navigate(`/room/${res.data.data.roomId}`, { state: { username } })
+        const res = await api.post('/rooms')
+        const roomId = res.data.data.roomId.trim()
+        navigate(`/room/${roomId}`, { state: { username } })
     } catch {
       setError('Failed to create room')
     } finally {
@@ -26,12 +27,11 @@ function Home() {
     }
   }
 
-  const handleJoin = async () => {
-    if (!username.trim()) return setError('Enter a username')
-    if (!roomId.trim()) return setError('Enter a room ID')
-    navigate(`/room/${roomId}`, { state: { username } })
-  }
-
+    const handleJoin = async () => {
+        if (!username.trim()) return setError('Enter a username')
+        if (!roomId.trim()) return setError('Enter a room ID')
+        navigate(`/room/${roomId.trim()}`, { state: { username } })
+    }
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-md shadow-lg">
