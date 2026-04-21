@@ -99,7 +99,7 @@ socket.on('run-code', async ({ roomId, code, language, stdin }) => {
     })
   }
   })
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     const { roomId, username } = socket.data
     if (!roomId) return
 
@@ -108,6 +108,14 @@ socket.on('run-code', async ({ roomId, code, language, stdin }) => {
 
     if (updated.length === 0) {
       rooms.delete(roomId)
+
+      // last user left — save final code to MongoDB
+      const state = roomStates.get(roomId)
+      if (state) {
+        await Room.updateOne({ roomId }, { $set: { code: state.code, language: state.language } })
+          .catch(err => console.error('Failed to save room on disconnect:', err.message))
+        roomStates.delete(roomId)
+      }
     } else {
       rooms.set(roomId, updated)
     }
