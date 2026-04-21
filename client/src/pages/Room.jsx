@@ -1,18 +1,19 @@
-import { useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useState, useRef } from 'react'
 import { useParams, useLocation } from 'react-router-dom'
-import { useSocket } from '@/context/SocketContext.jsx'
+import { useSocket } from '@/context/useSocket.js'
 import JoinModal from '@/components/room/JoinModal.jsx'
 import CodeEditor from '@/components/editor/CodeEditor.jsx'
 import OutputPanel from '@/components/editor/OutputPanel.jsx'
 import { Button } from '@/components/ui/button.jsx'
-
+import LanguageSelect from '@/components/editor/LanguageSelect.jsx'
 function Room() {
   const { roomId } = useParams()
   const location = useLocation()
   const socket = useSocket()
 
-  const [username, setUsername] = useState(location.state?.username || '')
-  const [joined, setJoined] = useState(false)
+  const initialUsername = location.state?.username || ''
+  const [username, setUsername] = useState(initialUsername)
+  const [joined, setJoined] = useState(Boolean(initialUsername))
   const [users, setUsers] = useState([])
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('javascript')
@@ -22,22 +23,21 @@ function Room() {
 
   const isRemoteChange = useRef(false)
 
-  useEffect(() => {
-    if (username && socket) joinRoom(username)
-  }, [socket])
-
-  const joinRoom = (name) => {
+  const joinRoom = useCallback((name) => {
     setUsername(name)
-    socket.emit('join-room', { roomId, username: name })
     setJoined(true)
-  }
+  }, [])
 
   useEffect(() => {
     if (!socket) return
 
-    socket.on('room-joined', ({ users }) => setUsers(users))
-    socket.on('user-joined', ({ username, color }) => setUsers(prev => [...prev, { username, color }]))
-    socket.on('user-left', ({ username }) => setUsers(prev => prev.filter(u => u.username !== username)))
+    socket.on('room-joined', ({ users, code, language }) => {
+      setUsers(users)
+      setCode(code || '')
+      setLanguage(language || 'javascript')
+    })
+    socket.on('user-joined', (user) => setUsers(prev => [...prev, user]))
+    socket.on('user-left', ({ socketId }) => setUsers(prev => prev.filter(u => u.socketId !== socketId)))
 
     socket.on('code-update', ({ code }) => {
       isRemoteChange.current = true
@@ -69,6 +69,12 @@ function Room() {
     }
   }, [socket])
 
+  useEffect(() => {
+    if (joined && username && socket) {
+      socket.emit('join-room', { roomId, username })
+    }
+  }, [joined, roomId, socket, username])
+
   const handleCodeChange = (value) => {
     if (isRemoteChange.current) {
       isRemoteChange.current = false
@@ -78,10 +84,15 @@ function Room() {
     socket.emit('code-change', { roomId, code: value })
   }
 
-    const handleRun = () => {
-        // console.log('run clicked', { code, language, roomId, socket: socket?.id })
-        socket.emit('run-code', { roomId, code, language })
-    }   
+  const handleRun = () => {
+      // console.log('run clicked', { code, language, roomId, socket: socket?.id })
+      socket.emit('run-code', { roomId, code, language })
+  }   
+  
+  const handleLanguageChange = (lang) => {
+    setLanguage(lang)
+    socket.emit('language-change', { roomId, language: lang })
+  }
 
   return (
     <>
@@ -104,6 +115,7 @@ function Room() {
                 </div>
               ))}
             </div>
+            <LanguageSelect language={language} onChange={handleLanguageChange} />
             <Button size="sm" onClick={handleRun} disabled={loading}>
               {loading ? 'Running...' : 'Run'}
             </Button>

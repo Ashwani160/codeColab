@@ -12,7 +12,7 @@ const createRoom= catchAsync(async(req , res)=>{
 })
 
 const getRoom= catchAsync(async(req, res)=>{
-    const {roomId}=req.params.roomId;
+    const {roomId}=req.params;
     const room = await Room.findOne({roomId: roomId});
     if(!room){
         throw new ApiError(404, "Room Not Found!");

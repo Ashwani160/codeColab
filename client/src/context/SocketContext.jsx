@@ -1,20 +1,24 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { io } from 'socket.io-client'
-
-const SocketContext = createContext(null)
-
-export const useSocket = () => useContext(SocketContext)
+import SocketContext from './socketContext.js'
 
 export function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null)
 
   useEffect(() => {
+    let active = true
     const s = io('http://localhost:3000', {
       transports: ['websocket'],
     })
-    setSocket(s)
 
-    return () => s.disconnect()
+    queueMicrotask(() => {
+      if (active) setSocket(s)
+    })
+
+    return () => {
+      active = false
+      s.disconnect()
+    }
   }, [])
 
   return (

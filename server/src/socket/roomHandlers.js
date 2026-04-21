@@ -1,16 +1,45 @@
 import executeCode from '../services/execute.service.js'
+import Room from '../models/Room.js'
 
 const rooms = new Map()
+const roomStates = new Map()
 // rooms structure: roomId → [{ socketId, username, color }]
 
 const COLORS = ['#ef4444','#3b82f6','#22c55e','#f59e0b','#a855f7','#ec4899','#14b8a6','#f97316']
 
 const getUserColor = (index) => COLORS[index % COLORS.length]
+const getDefaultRoomState = () => ({ code: '', language: 'javascript' })
+
+const getRoomState = async (roomId) => {
+  if (roomStates.has(roomId)) return roomStates.get(roomId)
+
+  const room = await Room.findOne({ roomId }).select('code language').lean()
+  const state = {
+    code: room?.code || '',
+    language: room?.language || 'javascript'
+  }
+
+  roomStates.set(roomId, state)
+  return state
+}
+
+const updateRoomState = (roomId, patch, persist = false) => {
+  const state = roomStates.get(roomId) || getDefaultRoomState()
+  const nextState = { ...state, ...patch }
+  roomStates.set(roomId, nextState)
+
+  if (!persist) return
+
+  Room.updateOne({ roomId }, { $set: patch }).catch(error => {
+    console.error('Failed to persist room state:', error.message)
+  })
+}
 
 const roomHandlers = (io, socket) => {
 
   socket.on('join-room', async ({ roomId, username }) => {
     socket.join(roomId)
+    const roomState = await getRoomState(roomId)
 
     if (!rooms.has(roomId)) rooms.set(roomId, [])
     const users = rooms.get(roomId)
@@ -19,20 +48,22 @@ const roomHandlers = (io, socket) => {
     users.push(user)
 
     // send current room state to the joining user only
-    socket.emit('room-joined', { users })
+    socket.emit('room-joined', { users, ...roomState })
 
     // tell everyone else a new user arrived
-    socket.to(roomId).emit('user-joined', { username: user.username, color: user.color })
+    socket.to(roomId).emit('user-joined', user)
 
     socket.data.roomId = roomId
     socket.data.username = username
   })
 
   socket.on('code-change', ({ roomId, code }) => {
+    updateRoomState(roomId, { code })
     socket.to(roomId).emit('code-update', { code })
   })
 
   socket.on('language-change', ({ roomId, language }) => {
+    updateRoomState(roomId, { language }, true)
     socket.to(roomId).emit('language-changed', { language })
   })
 
@@ -81,7 +112,7 @@ socket.on('run-code', async ({ roomId, code, language, stdin }) => {
       rooms.set(roomId, updated)
     }
 
-    socket.to(roomId).emit('user-left', { username })
+    socket.to(roomId).emit('user-left', { socketId: socket.id, username })
   })
 
 }
