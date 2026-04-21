@@ -87,11 +87,9 @@ function Room() {
     socket.emit('code-change', { roomId, code: value })
   }
 
-  const handleRun = () => {
-      // console.log('run clicked', { code, language, roomId, socket: socket?.id })
-      socket.emit('run-code', { roomId, code, language })
-  }   
-  
+  const handleRun = (stdin = '') => {
+    socket.emit('run-code', { roomId, code, language, stdin })
+  }
   const handleLanguageChange = (lang) => {
     setLanguage(lang)
     socket.emit('language-change', { roomId, language: lang })
@@ -148,7 +146,7 @@ function Room() {
               />
             </div>
             <div className="h-48 border-t">
-              <OutputPanel output={output} error={error} loading={loading} />
+              <OutputPanel output={output} error={error} loading={loading} onRun={handleRun} />
             </div>
           </div>
 
