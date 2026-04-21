@@ -1,3 +1,5 @@
+import executeCode from '../services/execute.service.js'
+
 const rooms = new Map()
 // rooms structure: roomId → [{ socketId, username, color }]
 
@@ -51,6 +53,21 @@ const roomHandlers = (io, socket) => {
     })
   })
 
+
+socket.on('run-code', async ({ roomId, code, language, stdin }) => {
+  io.to(roomId).emit('run-loading')
+
+  try {
+    // Pass stdin to the new executeCode function
+    const result = await executeCode(code, language, stdin || "") 
+    io.to(roomId).emit('run-result', result)
+  } catch (error) {
+    io.to(roomId).emit('run-result', { 
+      output: '', 
+      error: error.message 
+    })
+  }
+  })
   socket.on('disconnect', () => {
     const { roomId, username } = socket.data
     if (!roomId) return

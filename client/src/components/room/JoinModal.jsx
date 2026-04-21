@@ -13,7 +13,7 @@ function JoinModal({ open, onJoin }) {
 
   return (
     <Dialog open={open}>
-      <DialogContent className="sm:max-w-sm" hideCloseButton>
+      <DialogContent className="sm:max-w-sm" >
         <DialogHeader>
           <DialogTitle>Enter your username</DialogTitle>
         </DialogHeader>
