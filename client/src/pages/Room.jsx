@@ -6,6 +6,9 @@ import CodeEditor from '@/components/editor/CodeEditor.jsx'
 import OutputPanel from '@/components/editor/OutputPanel.jsx'
 import { Button } from '@/components/ui/button.jsx'
 import LanguageSelect from '@/components/editor/LanguageSelect.jsx'
+import ChatPanel from '@/components/room/ChatPanel.jsx'
+import { toast } from 'sonner'
+
 function Room() {
   const { roomId } = useParams()
   const location = useLocation()
@@ -93,6 +96,10 @@ function Room() {
     setLanguage(lang)
     socket.emit('language-change', { roomId, language: lang })
   }
+  const handleCopyRoomId = () => {
+    navigator.clipboard.writeText(roomId)
+    toast.success('Room ID copied!')
+  }
 
   return (
     <>
@@ -102,7 +109,13 @@ function Room() {
         {/* header */}
         <div className="flex items-center justify-between px-4 py-2 border-b">
           <h1 className="font-bold">CodeSync</h1>
-          <span className="text-sm text-muted-foreground">Room: {roomId}</span>
+          <span
+            onClick={handleCopyRoomId}
+            className="text-sm text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+            title="Click to copy"
+          >
+            Room: {roomId} 📋
+          </span>
           <div className="flex items-center gap-3">
             <div className="flex gap-2">
               {users.map(u => (
@@ -122,18 +135,28 @@ function Room() {
           </div>
         </div>
 
-        {/* editor + output split */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-hidden">
-            <CodeEditor
-              code={code}
-              language={language}
-              onChange={handleCodeChange}
-            />
+        {/* main content */}
+        <div className="flex-1 flex overflow-hidden">
+
+          {/* left: editor + output */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 overflow-hidden">
+              <CodeEditor
+                code={code}
+                language={language}
+                onChange={handleCodeChange}
+              />
+            </div>
+            <div className="h-48 border-t">
+              <OutputPanel output={output} error={error} loading={loading} />
+            </div>
           </div>
-          <div className="h-48 border-t">
-            <OutputPanel output={output} error={error} loading={loading} />
+
+          {/* right: chat */}
+          <div className="w-64 flex flex-col">
+            <ChatPanel roomId={roomId} username={username} />
           </div>
+
         </div>
       </div>
     </>
