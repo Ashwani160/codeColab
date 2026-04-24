@@ -7,5 +7,6 @@ import { Toaster } from '@/components/ui/sonner.jsx'
 createRoot(document.getElementById('root')).render(
   <SocketProvider>
     <App />
+    <Toaster richColors theme="dark" position="top-center" />
   </SocketProvider>
 )
